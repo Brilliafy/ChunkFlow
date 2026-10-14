@@ -1,0 +1,15 @@
+{
+  "package": "com.cleanroommc.chunkflow.mixin",
+  "required": true,
+  "refmap": "mixins.chunkflow.refmap.json",
+  "target": "@env(DEFAULT)",
+  "minVersion": "0.8.5",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "ChunkIOExecutorMixin",
+    "PlayerChunkMapEntryMixin",
+    "RegionFileMixin"
+  ],
+  "server": [],
+  "client": []
+}
