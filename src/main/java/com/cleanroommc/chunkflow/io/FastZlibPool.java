@@ -50,10 +50,13 @@ public final class FastZlibPool {
 
         if (!ModConfig.REGION.enabled || !ModConfig.REGION.enableZlibPooling) {
             Inflater inf = new Inflater();
-            inf.setInput(compressedData, offset, length);
-            byte[] out = decompressFallback(inf);
-            inf.end();
-            return new DataInputStream(new ByteArrayInputStream(out));
+            try {
+                inf.setInput(compressedData, offset, length);
+                byte[] out = decompressFallback(inf);
+                return new DataInputStream(new ByteArrayInputStream(out));
+            } finally {
+                inf.end();
+            }
         }
 
         ZLIB_REUSES.incrementAndGet();
@@ -76,7 +79,19 @@ public final class FastZlibPool {
                 baos.write(buffer, 0, count);
             }
         } catch (DataFormatException dfe) {
+            try {
+                inflater.end();
+            } catch (Throwable ignored) {
+            }
+            INFLATER_POOL.set(new Inflater());
             throw new IOException("Corrupt compressed chunk data", dfe);
+        } catch (Throwable t) {
+            try {
+                inflater.end();
+            } catch (Throwable ignored) {
+            }
+            INFLATER_POOL.set(new Inflater());
+            throw new IOException("Failed to decompress chunk data", t);
         }
 
         // Copy into an exact-sized array. Returning a view over the thread-local scratch buffer would
@@ -119,9 +134,18 @@ public final class FastZlibPool {
         ByteArrayOutputStream baos = new ByteArrayOutputStream(length);
         byte[] buffer = TEMP_BUFFER.get();
 
-        while (!deflater.finished()) {
-            int count = deflater.deflate(buffer);
-            baos.write(buffer, 0, count);
+        try {
+            while (!deflater.finished()) {
+                int count = deflater.deflate(buffer);
+                baos.write(buffer, 0, count);
+            }
+        } catch (Throwable t) {
+            try {
+                deflater.end();
+            } catch (Throwable ignored) {
+            }
+            DEFLATER_POOL.set(new Deflater());
+            throw t;
         }
 
         ZLIB_REUSES.incrementAndGet();

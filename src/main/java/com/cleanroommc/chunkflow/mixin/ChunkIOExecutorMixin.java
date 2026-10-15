@@ -27,11 +27,11 @@ public abstract class ChunkIOExecutorMixin {
 
     /**
      * Forge derives the core pool size from player count ({@code max(1, players/50)}). We manage the
-     * size ourselves, so cancel it and enforce our target instead.
+     * size through ChunkFlow's configurator.
      */
     @Inject(method = "adjustPoolSize", at = @At("HEAD"), cancellable = true, remap = false)
     private static void chunkPipeline$adjustPoolSize(int players, CallbackInfo ci) {
-        ChunkFlow.ensurePoolSize(pool);
+        ChunkFlow.adjustPoolSize(pool, players);
         ci.cancel();
     }
 

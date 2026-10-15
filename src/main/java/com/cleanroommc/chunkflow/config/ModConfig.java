@@ -30,7 +30,7 @@ public class ModConfig {
         @Config.Name("Enable")
         public boolean enabled = true;
 
-        @Config.Comment("Number of chunk I/O worker threads. 0 = automatic (CPU cores - 1, at least 2), capped by Max Threads.")
+        @Config.Comment("Number of chunk I/O worker threads. 0 = automatic (CPU cores - 1, capped at 4 for stability), or specify a positive count.")
         @Config.RangeInt(min = 0, max = 64)
         @Config.Name("I/O Threads")
         public int ioThreads = 0;
@@ -39,6 +39,15 @@ public class ModConfig {
         @Config.RangeInt(min = 1, max = 64)
         @Config.Name("Max Threads")
         public int maxThreads = 8;
+
+        @Config.Comment("Minimum chunk I/O worker threads when scaling with player count is enabled.")
+        @Config.RangeInt(min = 1, max = 64)
+        @Config.Name("Min Threads")
+        public int minThreads = 2;
+
+        @Config.Comment("Dynamically scale worker thread count between Min Threads and Max Threads based on player count. When false, effective target threads are always maintained.")
+        @Config.Name("Scale With Players")
+        public boolean scaleWithPlayers = false;
     }
 
     public static class RegionIO {
@@ -53,6 +62,11 @@ public class ModConfig {
         @Config.Comment("Use the fast custom decompression path in RegionFile#getChunkDataInputStream.")
         @Config.Name("Enable Fast Decompression")
         public boolean enableFastDecompression = true;
+
+        @Config.Comment("Maximum number of region files to keep open in the cache before evicting idle files. Vanilla is 256 (which wipes all files). ChunkFlow cleanly trims only idle files.")
+        @Config.RangeInt(min = 64, max = 4096)
+        @Config.Name("Max Cache Size")
+        public int maxCacheSize = 512;
     }
 
     public static class Directional {

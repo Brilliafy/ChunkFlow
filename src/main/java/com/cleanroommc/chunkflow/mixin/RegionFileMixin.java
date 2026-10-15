@@ -2,11 +2,13 @@ package com.cleanroommc.chunkflow.mixin;
 
 import com.cleanroommc.chunkflow.config.ModConfig;
 import com.cleanroommc.chunkflow.io.FastZlibPool;
+import com.cleanroommc.chunkflow.io.IRegionFile;
 import net.minecraft.world.chunk.storage.RegionFile;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.BufferedInputStream;
@@ -21,9 +23,11 @@ import java.util.zip.GZIPInputStream;
  * Reimplements {@code RegionFile#getChunkDataInputStream} with the same sector/length validation as
  * vanilla, but decompresses with a pooled {@code Inflater} (see {@link FastZlibPool}) instead of a
  * fresh {@code InflaterInputStream} per chunk. Falls back to vanilla behaviour when disabled.
+ * Also synchronizes and safely tracks close status to prevent race conditions during dimension unloads
+ * or Chunk-Pregenerator cache trimming.
  */
 @Mixin(RegionFile.class)
-public abstract class RegionFileMixin {
+public abstract class RegionFileMixin implements IRegionFile {
 
     @Shadow
     private RandomAccessFile dataFile;
@@ -37,8 +41,53 @@ public abstract class RegionFileMixin {
     @Shadow
     protected abstract int getOffset(int x, int z);
 
+    private volatile boolean chunkflow$closed = false;
+    private volatile long chunkflow$lastAccess = System.currentTimeMillis();
+
+    @Override
+    public boolean chunkflow$isClosed() {
+        return this.chunkflow$closed || this.dataFile == null;
+    }
+
+    @Override
+    public void chunkflow$setClosed(boolean closed) {
+        this.chunkflow$closed = closed;
+    }
+
+    @Override
+    public long chunkflow$getLastAccess() {
+        return this.chunkflow$lastAccess;
+    }
+
+    @Override
+    public void chunkflow$touch() {
+        this.chunkflow$lastAccess = System.currentTimeMillis();
+    }
+
+    @Inject(method = "close", at = @At("HEAD"), cancellable = true)
+    private void chunkPipeline$onClose(CallbackInfo ci) throws IOException {
+        synchronized (this) {
+            this.chunkflow$closed = true;
+            if (this.dataFile != null) {
+                try {
+                    this.dataFile.close();
+                } finally {
+                    this.dataFile = null;
+                }
+            }
+        }
+        ci.cancel();
+    }
+
     @Inject(method = "getChunkDataInputStream(II)Ljava/io/DataInputStream;", at = @At("HEAD"), cancellable = true)
     private void chunkPipeline$onGetChunkDataInputStream(int x, int z, CallbackInfoReturnable<DataInputStream> cir) {
+        this.chunkflow$touch();
+
+        if (this.chunkflow$isClosed()) {
+            cir.setReturnValue(null);
+            return;
+        }
+
         if (!ModConfig.REGION.enabled || !ModConfig.REGION.enableFastDecompression) {
             return;
         }
@@ -58,6 +107,10 @@ public abstract class RegionFileMixin {
             int j = i >> 8;
             int k = i & 255;
             if (k == 255) {
+                if (this.dataFile == null) {
+                    cir.setReturnValue(null);
+                    return;
+                }
                 this.dataFile.seek((long) j * 4096L);
                 k = (this.dataFile.readInt() + 4) / 4096 + 1;
             }
@@ -67,6 +120,10 @@ public abstract class RegionFileMixin {
                 return;
             }
 
+            if (this.dataFile == null) {
+                cir.setReturnValue(null);
+                return;
+            }
             this.dataFile.seek((long) j * 4096L);
             int l = this.dataFile.readInt();
             if (l > 4096 * k || l <= 0) {

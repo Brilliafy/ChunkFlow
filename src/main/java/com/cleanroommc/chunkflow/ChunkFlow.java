@@ -2,9 +2,15 @@ package com.cleanroommc.chunkflow;
 
 import com.cleanroommc.chunkflow.command.CommandChunkFlow;
 import com.cleanroommc.chunkflow.config.ModConfig;
+import com.cleanroommc.chunkflow.io.ChunkIOExecutorHelper;
+import com.cleanroommc.chunkflow.io.RegionFileCacheHelper;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
+import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,10 +25,8 @@ import java.util.concurrent.ThreadPoolExecutor;
  *       <b>core pool size of 1</b> and an <b>unbounded</b> queue, so a {@link ThreadPoolExecutor} never
  *       grows past one worker: the region read + zlib inflate + {@code DataFixer} walk + NBT parse +
  *       {@code Chunk} construction ran on a single thread. This mod sizes it to the CPU and keeps it
- *       there. Safe because per-region reads are already synchronised in
- *       {@code RegionFile#getChunkDataInputStream} and {@code readChunkFromNBT} builds a self-contained
- *       {@code Chunk}; world-touching callbacks still run on the main thread via
- *       {@code ChunkIOExecutor.tick()}.</li>
+ *       there. Safe because per-region reads are synchronised in {@code RegionFile}, region file cache is
+ *       backed by a thread-safe map with safe closing, and tasks are quiesced prior to dimension unloads.</li>
  *   <li><b>Region file I/O</b> - a fast {@code RegionFile#getChunkDataInputStream} path using pooled
  *       zlib decompressors instead of allocating a new {@code Inflater} per chunk.</li>
  * </ul>
@@ -48,6 +52,15 @@ public class ChunkFlow {
 
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
+        MinecraftForge.EVENT_BUS.register(this);
+        RegionFileCacheHelper.ensureConcurrentMap();
+
+        try {
+            Class.forName("pregenerator.ChunkPregenerator");
+            LOGGER.info("[ChunkFlow] Chunk-Pregenerator detected: concurrent region cache & safe file closing interop active.");
+        } catch (ClassNotFoundException ignored) {
+        }
+
         LOGGER.info("[ChunkFlow] Initialised. CPU cores: {}, target chunk I/O threads: {}.",
                 Runtime.getRuntime().availableProcessors(),
                 ModConfig.ASYNC.enabled ? effectiveThreads() : 0);
@@ -58,6 +71,19 @@ public class ChunkFlow {
         event.registerServerCommand(new CommandChunkFlow());
     }
 
+    @Mod.EventHandler
+    public void serverStopping(FMLServerStoppingEvent event) {
+        LOGGER.info("[ChunkFlow] Server stopping: draining and quiescing chunk I/O pool.");
+        ChunkIOExecutorHelper.quiesceAll();
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (event.getWorld() != null) {
+            ChunkIOExecutorHelper.quiesceWorld(event.getWorld());
+        }
+    }
+
     /** Number of worker threads the chunk I/O pool should use. */
     public static int effectiveThreads() {
         int max = Math.max(1, ModConfig.ASYNC.maxThreads);
@@ -65,8 +91,30 @@ public class ChunkFlow {
             return Math.min(max, Math.max(1, ModConfig.ASYNC.ioThreads));
         }
         int cores = Runtime.getRuntime().availableProcessors();
-        int auto = Math.max(2, cores - 1);
+        int auto;
+        if (cores <= 2) {
+            auto = 1;
+        } else {
+            // Auto default capped at 4 for stability against I/O thrashing on sata/spindle drives
+            auto = Math.min(4, cores - 1);
+        }
         return Math.min(max, auto);
+    }
+
+    public static void adjustPoolSize(ThreadPoolExecutor pool, int players) {
+        poolRef = pool;
+        if (!ModConfig.ASYNC.enabled) {
+            return;
+        }
+        int target;
+        if (ModConfig.ASYNC.scaleWithPlayers) {
+            int min = Math.max(1, ModConfig.ASYNC.minThreads);
+            int max = effectiveThreads();
+            target = Math.min(max, Math.max(min, min + (players / 10)));
+        } else {
+            target = effectiveThreads();
+        }
+        ensurePoolSize(pool, target);
     }
 
     /**
@@ -75,11 +123,14 @@ public class ChunkFlow {
      * shrinking it back to one thread.
      */
     public static void ensurePoolSize(ThreadPoolExecutor pool) {
+        ensurePoolSize(pool, effectiveThreads());
+    }
+
+    public static void ensurePoolSize(ThreadPoolExecutor pool, int target) {
         poolRef = pool;
         if (!ModConfig.ASYNC.enabled) {
             return;
         }
-        int target = effectiveThreads();
         if (pool.getCorePoolSize() == target && pool.getMaximumPoolSize() == target) {
             return;
         }
@@ -88,8 +139,10 @@ public class ChunkFlow {
         try {
             pool.setCorePoolSize(target);
             pool.setMaximumPoolSize(target);
-            LOGGER.info("[ChunkFlow] Chunk I/O pool sized to {} thread(s) (was core {}, max {}).",
-                    target, prevCore, prevMax);
+            if (ModConfig.debugLogging) {
+                LOGGER.info("[ChunkFlow] Chunk I/O pool sized to {} thread(s) (was core {}, max {}).",
+                        target, prevCore, prevMax);
+            }
         } catch (Throwable t) {
             LOGGER.warn("[ChunkFlow] Could not resize chunk I/O pool to {}; leaving it alone.", target, t);
         }
