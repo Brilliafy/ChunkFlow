@@ -10,12 +10,18 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadPoolExecutor;
 
+/**
+ * Helper to gracefully await and drain in-flight chunk I/O worker reads before dimension unloads
+ * or server stopping.
+ *
+ * <p>Strictly respects Forge's ChunkIOProvider contract: does NOT remove queued tasks or manually
+ * invoke callbacks from outside. The synchronized RegionFile.close() and ConcurrentHashMap in
+ * RegionFileCache remain the authoritative safety net against races.</p>
+ */
 public final class ChunkIOExecutorHelper {
 
     private static Map<?, ?> tasksMap;
-    private static ThreadPoolExecutor poolInstance;
     private static Field worldField;
     private static Method runFinishedMethod;
     private static boolean reflectionInitialized = false;
@@ -32,10 +38,6 @@ public final class ChunkIOExecutorHelper {
             tasksField.setAccessible(true);
             tasksMap = (Map<?, ?>) tasksField.get(null);
 
-            Field pField = ChunkIOExecutor.class.getDeclaredField("pool");
-            pField.setAccessible(true);
-            poolInstance = (ThreadPoolExecutor) pField.get(null);
-
             Class<?> queuedChunkClass = Class.forName("net.minecraftforge.common.chunkio.QueuedChunk");
             worldField = queuedChunkClass.getDeclaredField("world");
             worldField.setAccessible(true);
@@ -50,16 +52,28 @@ public final class ChunkIOExecutorHelper {
         }
     }
 
+    private static boolean isRunFinished(Object provider) {
+        if (runFinishedMethod != null && provider != null) {
+            try {
+                Boolean res = (Boolean) runFinishedMethod.invoke(provider);
+                return res != null && res;
+            } catch (Throwable ignored) {
+            }
+        }
+        return true;
+    }
+
     /**
-     * Quiesce/drain in-flight chunk I/O tasks for a specific world (or all worlds if world is null).
+     * Awaits in-flight chunk I/O worker reads for a specific world before it is unloaded or flushed.
+     * Does NOT alter task state or dequeue tasks, preserving Forge's callback lifecycle.
      */
-    public static void quiesceWorld(World world) {
+    public static void drainWorldTasks(World world) {
         initReflection();
-        if (tasksMap == null || poolInstance == null) {
+        if (tasksMap == null || worldField == null) {
             return;
         }
 
-        List<Object> tasksToWait = new ArrayList<>();
+        List<Object> inFlightProviders = new ArrayList<>();
 
         for (Map.Entry<?, ?> entry : tasksMap.entrySet()) {
             Object key = entry.getKey();
@@ -71,26 +85,22 @@ public final class ChunkIOExecutorHelper {
             try {
                 World taskWorld = (World) worldField.get(key);
                 if (world == null || taskWorld == world) {
-                    Runnable runnable = (Runnable) provider;
-                    if (!poolInstance.remove(runnable)) {
-                        tasksToWait.add(provider);
+                    if (!isRunFinished(provider)) {
+                        inFlightProviders.add(provider);
                     }
                 }
             } catch (Throwable ignored) {
             }
         }
 
-        for (Object provider : tasksToWait) {
+        for (Object provider : inFlightProviders) {
             synchronized (provider) {
-                long deadline = System.currentTimeMillis() + 1000L;
-                while (System.currentTimeMillis() < deadline) {
+                long deadline = System.currentTimeMillis() + 500L;
+                while (!isRunFinished(provider) && System.currentTimeMillis() < deadline) {
                     try {
-                        Boolean finished = (Boolean) runFinishedMethod.invoke(provider);
-                        if (finished != null && finished) {
-                            break;
-                        }
                         provider.wait(50L);
-                    } catch (Throwable ignored) {
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }
@@ -99,16 +109,16 @@ public final class ChunkIOExecutorHelper {
     }
 
     /**
-     * Quiesce/drain in-flight chunk I/O tasks belonging to the specified world directory.
+     * Awaits in-flight chunk I/O worker reads belonging to the specified world save directory.
      */
-    public static void quiesceWorldDir(File worldDir) {
+    public static void drainWorldTasks(File worldDir) {
         initReflection();
-        if (tasksMap == null || poolInstance == null || worldDir == null) {
-            quiesceWorld(null);
+        if (tasksMap == null || worldField == null || worldDir == null) {
+            drainWorldTasks((World) null);
             return;
         }
 
-        List<Object> tasksToWait = new ArrayList<>();
+        List<Object> inFlightProviders = new ArrayList<>();
         String targetPath = worldDir.getAbsolutePath();
 
         for (Map.Entry<?, ?> entry : tasksMap.entrySet()) {
@@ -127,27 +137,21 @@ public final class ChunkIOExecutorHelper {
                         matches = true;
                     }
                 }
-                if (matches) {
-                    Runnable runnable = (Runnable) provider;
-                    if (!poolInstance.remove(runnable)) {
-                        tasksToWait.add(provider);
-                    }
+                if (matches && !isRunFinished(provider)) {
+                    inFlightProviders.add(provider);
                 }
             } catch (Throwable ignored) {
             }
         }
 
-        for (Object provider : tasksToWait) {
+        for (Object provider : inFlightProviders) {
             synchronized (provider) {
-                long deadline = System.currentTimeMillis() + 1000L;
-                while (System.currentTimeMillis() < deadline) {
+                long deadline = System.currentTimeMillis() + 500L;
+                while (!isRunFinished(provider) && System.currentTimeMillis() < deadline) {
                     try {
-                        Boolean finished = (Boolean) runFinishedMethod.invoke(provider);
-                        if (finished != null && finished) {
-                            break;
-                        }
                         provider.wait(50L);
-                    } catch (Throwable ignored) {
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                         break;
                     }
                 }
@@ -155,7 +159,11 @@ public final class ChunkIOExecutorHelper {
         }
     }
 
-    public static void quiesceAll() {
-        quiesceWorld(null);
+    public static void drainAll() {
+        drainWorldTasks((World) null);
+        try {
+            ChunkIOExecutor.tick();
+        } catch (Throwable ignored) {
+        }
     }
 }

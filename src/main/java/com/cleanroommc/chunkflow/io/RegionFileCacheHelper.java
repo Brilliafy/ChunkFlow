@@ -23,7 +23,7 @@ public final class RegionFileCacheHelper {
 
     public static void beforeFlush(File worldDir) {
         FLUSHING_WORLD_DIR.set(worldDir);
-        ChunkIOExecutorHelper.quiesceWorldDir(worldDir);
+        ChunkIOExecutorHelper.drainWorldTasks(worldDir);
     }
 
     public static void afterFlush() {
@@ -34,28 +34,55 @@ public final class RegionFileCacheHelper {
         return FLUSHING_WORLD_DIR.get();
     }
 
+    private static Field getRegionsByFileField() {
+        try {
+            return RegionFileCache.class.getDeclaredField("REGIONS_BY_FILE");
+        } catch (NoSuchFieldException e) {
+            try {
+                return RegionFileCache.class.getDeclaredField("field_76553_a");
+            } catch (NoSuchFieldException e2) {
+                for (Field f : RegionFileCache.class.getDeclaredFields()) {
+                    if (Map.class.isAssignableFrom(f.getType())) {
+                        return f;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Verifies that REGIONS_BY_FILE is an instance of ConcurrentMap and logs its concrete type.
+     */
+    public static void verifyConcurrentMap() {
+        try {
+            Field field = getRegionsByFileField();
+            if (field == null) {
+                ChunkFlow.LOGGER.warn("[ChunkFlow] Could not locate REGIONS_BY_FILE field to verify.");
+                return;
+            }
+            field.setAccessible(true);
+            Object map = field.get(null);
+            if (map instanceof ConcurrentMap) {
+                ChunkFlow.LOGGER.info("[ChunkFlow] RegionFileCache.REGIONS_BY_FILE verified concurrent: {} (size: {}).",
+                        map.getClass().getName(), ((Map<?, ?>) map).size());
+            } else {
+                ChunkFlow.LOGGER.error("[ChunkFlow] RegionFileCache.REGIONS_BY_FILE is NOT concurrent! Current type: {}. Converting now...",
+                        map != null ? map.getClass().getName() : "null");
+                ensureConcurrentMap();
+            }
+        } catch (Throwable t) {
+            ChunkFlow.LOGGER.warn("[ChunkFlow] Failed to verify REGIONS_BY_FILE map type", t);
+        }
+    }
+
     /**
      * Replaces RegionFileCache.REGIONS_BY_FILE with a ConcurrentHashMap if it is not one already.
      */
     @SuppressWarnings("unchecked")
     public static void ensureConcurrentMap() {
         try {
-            Field field = null;
-            try {
-                field = RegionFileCache.class.getDeclaredField("REGIONS_BY_FILE");
-            } catch (NoSuchFieldException e) {
-                try {
-                    field = RegionFileCache.class.getDeclaredField("field_76553_a");
-                } catch (NoSuchFieldException e2) {
-                    for (Field f : RegionFileCache.class.getDeclaredFields()) {
-                        if (Map.class.isAssignableFrom(f.getType())) {
-                            field = f;
-                            break;
-                        }
-                    }
-                }
-            }
-
+            Field field = getRegionsByFileField();
             if (field == null) {
                 ChunkFlow.LOGGER.warn("[ChunkFlow] Could not locate REGIONS_BY_FILE field on RegionFileCache.");
                 return;
@@ -69,7 +96,7 @@ public final class RegionFileCacheHelper {
                     newMap.putAll((Map<File, RegionFile>) current);
                 }
 
-                // Try Unsafe first
+                // Try Unsafe first (bypasses final on all JVMs)
                 try {
                     Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
                     unsafeField.setAccessible(true);
@@ -116,9 +143,7 @@ public final class RegionFileCacheHelper {
                     RegionFile rf = entry.getValue();
                     if (rf != null) {
                         try {
-                            synchronized (rf) {
-                                rf.close();
-                            }
+                            rf.close();
                         } catch (IOException e) {
                             ChunkFlow.LOGGER.warn("[ChunkFlow] Error closing region file: {}", file, e);
                         }
@@ -134,9 +159,7 @@ public final class RegionFileCacheHelper {
                 RegionFile rf = entry.getValue();
                 if (rf != null) {
                     try {
-                        synchronized (rf) {
-                            rf.close();
-                        }
+                        rf.close();
                     } catch (IOException e) {
                         ChunkFlow.LOGGER.warn("[ChunkFlow] Error closing region file: {}", entry.getKey(), e);
                     }
@@ -168,9 +191,7 @@ public final class RegionFileCacheHelper {
             } else if (rf instanceof IRegionFile && (now - ((IRegionFile) rf).chunkflow$getLastAccess() > idleThreshold)) {
                 it.remove();
                 try {
-                    synchronized (rf) {
-                        rf.close();
-                    }
+                    rf.close();
                 } catch (IOException ignored) {
                 }
                 targetRemove--;

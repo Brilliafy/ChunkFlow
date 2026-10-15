@@ -5,10 +5,10 @@ import com.cleanroommc.chunkflow.io.FastZlibPool;
 import com.cleanroommc.chunkflow.io.IRegionFile;
 import net.minecraft.world.chunk.storage.RegionFile;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.BufferedInputStream;
@@ -23,8 +23,10 @@ import java.util.zip.GZIPInputStream;
  * Reimplements {@code RegionFile#getChunkDataInputStream} with the same sector/length validation as
  * vanilla, but decompresses with a pooled {@code Inflater} (see {@link FastZlibPool}) instead of a
  * fresh {@code InflaterInputStream} per chunk. Falls back to vanilla behaviour when disabled.
- * Also synchronizes and safely tracks close status to prevent race conditions during dimension unloads
- * or Chunk-Pregenerator cache trimming.
+ *
+ * <p>Crucially overwrites {@code close()} to be {@code synchronized} on {@code this}, serializing with
+ * {@code getChunkDataInputStream} and {@code write} so a region file cannot be closed while in-flight
+ * reads or writes are active.</p>
  */
 @Mixin(RegionFile.class)
 public abstract class RegionFileMixin implements IRegionFile {
@@ -64,19 +66,21 @@ public abstract class RegionFileMixin implements IRegionFile {
         this.chunkflow$lastAccess = System.currentTimeMillis();
     }
 
-    @Inject(method = "close", at = @At("HEAD"), cancellable = true)
-    private void chunkPipeline$onClose(CallbackInfo ci) throws IOException {
-        synchronized (this) {
-            this.chunkflow$closed = true;
-            if (this.dataFile != null) {
-                try {
-                    this.dataFile.close();
-                } finally {
-                    this.dataFile = null;
-                }
+    /**
+     * @author ChunkFlow
+     * @reason Overwrite close() to be synchronized on this (holding the monitor), ensuring it blocks
+     *         until any active getChunkDataInputStream or write completes, and nulling dataFile safely.
+     */
+    @Overwrite
+    public synchronized void close() throws IOException {
+        this.chunkflow$closed = true;
+        if (this.dataFile != null) {
+            try {
+                this.dataFile.close();
+            } finally {
+                this.dataFile = null;
             }
         }
-        ci.cancel();
     }
 
     @Inject(method = "getChunkDataInputStream(II)Ljava/io/DataInputStream;", at = @At("HEAD"), cancellable = true)

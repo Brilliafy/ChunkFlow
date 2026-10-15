@@ -26,7 +26,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  *       grows past one worker: the region read + zlib inflate + {@code DataFixer} walk + NBT parse +
  *       {@code Chunk} construction ran on a single thread. This mod sizes it to the CPU and keeps it
  *       there. Safe because per-region reads are synchronised in {@code RegionFile}, region file cache is
- *       backed by a thread-safe map with safe closing, and tasks are quiesced prior to dimension unloads.</li>
+ *       backed by a thread-safe map with safe closing, and tasks are drained prior to dimension unloads.</li>
  *   <li><b>Region file I/O</b> - a fast {@code RegionFile#getChunkDataInputStream} path using pooled
  *       zlib decompressors instead of allocating a new {@code Inflater} per chunk.</li>
  * </ul>
@@ -54,6 +54,7 @@ public class ChunkFlow {
     public void init(FMLInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(this);
         RegionFileCacheHelper.ensureConcurrentMap();
+        RegionFileCacheHelper.verifyConcurrentMap();
 
         try {
             Class.forName("pregenerator.ChunkPregenerator");
@@ -69,18 +70,19 @@ public class ChunkFlow {
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         event.registerServerCommand(new CommandChunkFlow());
+        RegionFileCacheHelper.verifyConcurrentMap();
     }
 
     @Mod.EventHandler
     public void serverStopping(FMLServerStoppingEvent event) {
-        LOGGER.info("[ChunkFlow] Server stopping: draining and quiescing chunk I/O pool.");
-        ChunkIOExecutorHelper.quiesceAll();
+        LOGGER.info("[ChunkFlow] Server stopping: draining chunk I/O pool.");
+        ChunkIOExecutorHelper.drainAll();
     }
 
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         if (event.getWorld() != null) {
-            ChunkIOExecutorHelper.quiesceWorld(event.getWorld());
+            ChunkIOExecutorHelper.drainWorldTasks(event.getWorld());
         }
     }
 
