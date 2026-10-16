@@ -51,6 +51,19 @@ public final class RegionFileCacheHelper {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    public static Map<File, RegionFile> getRegionsMap() {
+        Field field = getRegionsByFileField();
+        if (field != null) {
+            field.setAccessible(true);
+            try {
+                return (Map<File, RegionFile>) field.get(null);
+            } catch (Throwable ignored) {
+            }
+        }
+        return null;
+    }
+
     /**
      * Verifies that REGIONS_BY_FILE is an instance of ConcurrentMap and logs its concrete type.
      */

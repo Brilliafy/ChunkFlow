@@ -167,6 +167,14 @@ public class CommandChunkFlow extends CommandBase {
                 FastZlibPool.TOTAL_COMPRESSED_CHUNKS.get()));
         sender.sendMessage(new TextComponentString(TextFormatting.LIGHT_PURPLE + "Zlib Compressor / Decompressor Reuses: " +
                 TextFormatting.WHITE + FastZlibPool.ZLIB_REUSES.get()));
+
+        java.util.Map<java.io.File, net.minecraft.world.chunk.storage.RegionFile> map = com.cleanroommc.chunkflow.io.RegionFileCacheHelper.getRegionsMap();
+        if (map != null) {
+            sender.sendMessage(new TextComponentString(TextFormatting.YELLOW + "Region Cache Map: " +
+                    TextFormatting.WHITE + map.getClass().getSimpleName() +
+                    TextFormatting.GRAY + " (open files: " + TextFormatting.WHITE + map.size() +
+                    TextFormatting.GRAY + ", limit: " + TextFormatting.WHITE + ModConfig.REGION.maxCacheSize + TextFormatting.GRAY + ")"));
+        }
     }
 
     private static void printDirectionalStats(ICommandSender sender) {
