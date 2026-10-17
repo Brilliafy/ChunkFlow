@@ -29,6 +29,26 @@ public final class ChunkIOExecutorHelper {
     private ChunkIOExecutorHelper() {
     }
 
+    public static void ensureConcurrentTasksMap() {
+        try {
+            Field tasksField = ChunkIOExecutor.class.getDeclaredField("tasks");
+            tasksField.setAccessible(true);
+            Map<?, ?> map = (Map<?, ?>) tasksField.get(null);
+            if (!(map instanceof java.util.concurrent.ConcurrentHashMap)) {
+                try {
+                    Field modifiersField = Field.class.getDeclaredField("modifiers");
+                    modifiersField.setAccessible(true);
+                    modifiersField.setInt(tasksField, tasksField.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+                } catch (Throwable ignored) {
+                }
+                tasksField.set(null, new java.util.concurrent.ConcurrentHashMap<>(map != null ? map : java.util.Collections.emptyMap()));
+                ChunkFlow.LOGGER.info("[ChunkFlow] Reflected ChunkIOExecutor.tasks into ConcurrentHashMap.");
+            }
+        } catch (Throwable t) {
+            ChunkFlow.LOGGER.warn("[ChunkFlow] Could not ensure ConcurrentHashMap for ChunkIOExecutor.tasks via reflection", t);
+        }
+    }
+
     private static synchronized void initReflection() {
         if (reflectionInitialized) {
             return;
