@@ -16,23 +16,17 @@ public class DirectionalChunkHelper {
     public static double getDirectionalDistance(ChunkPos pos, List<EntityPlayerMP> players) {
         TOTAL_CALLS.incrementAndGet();
 
-        double minEffectiveDist = Double.MAX_VALUE;
-
         double cx = (pos.x << 4) + 8.0;
         double cz = (pos.z << 4) + 8.0;
+        double beta = ModConfig.DIRECTIONAL.velocityWeightBeta;
+        double thresholdSq = ModConfig.DIRECTIONAL.minVelocityThresholdSq;
+        double minEffectiveDist = Double.POSITIVE_INFINITY;
 
         for (int i = 0; i < players.size(); i++) {
             EntityPlayerMP player = players.get(i);
             if (player == null) {
                 continue;
             }
-
-            double px = player.posX;
-            double pz = player.posZ;
-
-            double dx = cx - px;
-            double dz = cz - pz;
-            double distSq = dx * dx + dz * dz;
 
             double vx;
             double vz;
@@ -52,35 +46,13 @@ public class DirectionalChunkHelper {
                     vz = player.motionZ;
                 }
             }
-            double speedSq = vx * vx + vz * vz;
 
-            double effectiveDist = distSq;
-
-            if (speedSq > ModConfig.DIRECTIONAL.minVelocityThresholdSq) {
+            if (vx * vx + vz * vz > thresholdSq) {
                 DIRECTIONAL_BIASED_CALLS.incrementAndGet();
-
-                double speed = Math.sqrt(speedSq);
-                double dist = Math.sqrt(distSq);
-
-                if (dist > 0.001) {
-                    double cosTheta = (dx * vx + dz * vz) / (dist * speed);
-
-                    if (cosTheta > 0.2) {
-                        FORWARD_CHUNKS_BOOSTED.incrementAndGet();
-                    }
-
-                    double speedFactor = Math.min(1.0, speed * 2.0);
-                    double multiplier = 1.0 - (ModConfig.DIRECTIONAL.velocityWeightBeta * speedFactor * cosTheta);
-                    if (multiplier < 0.1) {
-                        multiplier = 0.1;
-                    }
-
-                    effectiveDist = distSq * (multiplier * multiplier);
-                }
             }
-
-            if (effectiveDist < minEffectiveDist) {
-                minEffectiveDist = effectiveDist;
+            double score = DirectionalScore.compute(cx, cz, player.posX, player.posZ, vx, vz, beta, thresholdSq);
+            if (score < minEffectiveDist) {
+                minEffectiveDist = score;
             }
         }
 

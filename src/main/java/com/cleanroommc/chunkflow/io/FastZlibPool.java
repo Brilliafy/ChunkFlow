@@ -94,6 +94,10 @@ public final class FastZlibPool {
             throw new IOException("Failed to decompress chunk data", t);
         }
 
+        if (!inflater.finished()) {
+            throw new java.io.EOFException("Truncated or corrupted zlib stream");
+        }
+
         // Copy into an exact-sized array. Returning a view over the thread-local scratch buffer would
         // silently corrupt any stream that outlives the next decompression on this thread.
         int count = baos.getCount();
@@ -120,6 +124,9 @@ public final class FastZlibPool {
             throw new IOException("Corrupt compressed chunk data", dfe);
         }
 
+        if (!inflater.finished()) {
+            throw new java.io.EOFException("Truncated or corrupted zlib stream");
+        }
         return baos.toByteArray();
     }
 

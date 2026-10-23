@@ -2,18 +2,13 @@ package com.cleanroommc.chunkflow.mixin;
 
 import com.cleanroommc.chunkflow.ChunkFlow;
 import net.minecraftforge.common.chunkio.ChunkIOExecutor;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -28,22 +23,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 @Mixin(value = ChunkIOExecutor.class, remap = false)
 public abstract class ChunkIOExecutorMixin {
 
-    @Shadow(remap = false)
-    @Final
-    @Mutable
-    private static Map tasks;
-
     /** Forge's chunk I/O executor: private static final ThreadPoolExecutor pool. */
     @Shadow(remap = false)
     private static ThreadPoolExecutor pool;
-
-    @Inject(method = "<clinit>", at = @At("RETURN"), remap = false)
-    private static void chunkPipeline$onClinit(CallbackInfo ci) {
-        if (!(tasks instanceof ConcurrentHashMap)) {
-            tasks = new ConcurrentHashMap<>(tasks != null ? tasks : Collections.emptyMap());
-            ChunkFlow.LOGGER.info("[ChunkFlow] Upgraded ChunkIOExecutor.tasks to ConcurrentHashMap in <clinit>.");
-        }
-    }
 
     /**
      * Forge derives the core pool size from player count ({@code max(1, players/50)}). We manage the

@@ -53,9 +53,6 @@ public class ChunkFlow {
     @Mod.EventHandler
     public void init(FMLInitializationEvent event) {
         MinecraftForge.EVENT_BUS.register(this);
-        ChunkIOExecutorHelper.ensureConcurrentTasksMap();
-        RegionFileCacheHelper.ensureConcurrentMap();
-        RegionFileCacheHelper.verifyConcurrentMap();
 
         try {
             Class.forName("pregenerator.ChunkPregenerator");
@@ -71,8 +68,6 @@ public class ChunkFlow {
     @Mod.EventHandler
     public void serverStarting(FMLServerStartingEvent event) {
         event.registerServerCommand(new CommandChunkFlow());
-        ChunkIOExecutorHelper.ensureConcurrentTasksMap();
-        RegionFileCacheHelper.verifyConcurrentMap();
     }
 
     @Mod.EventHandler

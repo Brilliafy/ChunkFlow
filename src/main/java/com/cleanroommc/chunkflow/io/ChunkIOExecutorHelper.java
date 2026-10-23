@@ -29,26 +29,10 @@ public final class ChunkIOExecutorHelper {
     private ChunkIOExecutorHelper() {
     }
 
-    public static void ensureConcurrentTasksMap() {
-        try {
-            Field tasksField = ChunkIOExecutor.class.getDeclaredField("tasks");
-            tasksField.setAccessible(true);
-            Map<?, ?> map = (Map<?, ?>) tasksField.get(null);
-            if (!(map instanceof java.util.concurrent.ConcurrentHashMap)) {
-                try {
-                    Field modifiersField = Field.class.getDeclaredField("modifiers");
-                    modifiersField.setAccessible(true);
-                    modifiersField.setInt(tasksField, tasksField.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
-                } catch (Throwable ignored) {
-                }
-                tasksField.set(null, new java.util.concurrent.ConcurrentHashMap<>(map != null ? map : java.util.Collections.emptyMap()));
-                ChunkFlow.LOGGER.info("[ChunkFlow] Reflected ChunkIOExecutor.tasks into ConcurrentHashMap.");
-            }
-        } catch (Throwable t) {
-            ChunkFlow.LOGGER.warn("[ChunkFlow] Could not ensure ConcurrentHashMap for ChunkIOExecutor.tasks via reflection", t);
-        }
-    }
-
+    /**
+     * Forge 1.12.2 already backs ChunkIOExecutor.tasks with a concurrent map. No reflective
+     * replacement is needed; this helper only observes the map to drain reads on shutdown.
+     */
     private static synchronized void initReflection() {
         if (reflectionInitialized) {
             return;
@@ -113,9 +97,12 @@ public final class ChunkIOExecutorHelper {
             }
         }
 
+        long deadline = System.currentTimeMillis() + 2000L;
         for (Object provider : inFlightProviders) {
+            if (System.currentTimeMillis() >= deadline) {
+                break;
+            }
             synchronized (provider) {
-                long deadline = System.currentTimeMillis() + 500L;
                 while (!isRunFinished(provider) && System.currentTimeMillis() < deadline) {
                     try {
                         provider.wait(50L);
@@ -164,9 +151,12 @@ public final class ChunkIOExecutorHelper {
             }
         }
 
+        long deadline = System.currentTimeMillis() + 2000L;
         for (Object provider : inFlightProviders) {
+            if (System.currentTimeMillis() >= deadline) {
+                break;
+            }
             synchronized (provider) {
-                long deadline = System.currentTimeMillis() + 500L;
                 while (!isRunFinished(provider) && System.currentTimeMillis() < deadline) {
                     try {
                         provider.wait(50L);
@@ -181,9 +171,5 @@ public final class ChunkIOExecutorHelper {
 
     public static void drainAll() {
         drainWorldTasks((World) null);
-        try {
-            ChunkIOExecutor.tick();
-        } catch (Throwable ignored) {
-        }
     }
 }
