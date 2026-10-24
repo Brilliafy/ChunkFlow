@@ -49,6 +49,7 @@ public abstract class RegionFileCacheMixin {
         RegionFileCacheHelper.trimCacheIfNeeded(REGIONS_BY_FILE);
 
         RegionFile created = new RegionFile(file);
+        chunkflow$touch(created);
         while (true) {
             RegionFile current = REGIONS_BY_FILE.get(file);
             if (current != null && !chunkflow$isClosed(current)) {
@@ -92,6 +93,7 @@ public abstract class RegionFileCacheMixin {
         RegionFileCacheHelper.trimCacheIfNeeded(REGIONS_BY_FILE);
 
         RegionFile created = new RegionFile(file);
+        chunkflow$touch(created);
         while (true) {
             RegionFile current = REGIONS_BY_FILE.get(file);
             if (current != null && !chunkflow$isClosed(current)) {

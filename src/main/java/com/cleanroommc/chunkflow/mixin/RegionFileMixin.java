@@ -164,7 +164,8 @@ public abstract class RegionFileMixin implements IRegionFile {
 
     @Override
     public long chunkflow$getLastAccess() {
-        return this.chunkflow$lastAccess;
+        long access = this.chunkflow$lastAccess;
+        return access == 0L ? System.currentTimeMillis() : access;
     }
 
     @Override
