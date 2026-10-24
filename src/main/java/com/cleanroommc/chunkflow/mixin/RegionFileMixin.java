@@ -81,9 +81,9 @@ public abstract class RegionFileMixin implements IRegionFile {
     }
 
     @Unique
-    private final RegionFileLease chunkflow$lease = new RegionFileLease();
+    private volatile RegionFileLease chunkflow$lease;
     @Unique
-    private final StampedLock chunkflow$lock = new StampedLock();
+    private volatile StampedLock chunkflow$lock;
     @Unique
     private volatile FileChannel chunkflow$channel;
     @Unique
@@ -94,15 +94,60 @@ public abstract class RegionFileMixin implements IRegionFile {
         this.chunkflow$channel = this.dataFile != null ? this.dataFile.getChannel() : null;
     }
 
+    /**
+     * Unique-field initializers are not guaranteed to be merged into every target
+     * constructor (observed on CleanMix: the field stayed null while the overwritten
+     * methods were live). Create them lazily; the null path runs once per instance.
+     */
+    @Unique
+    private RegionFileLease chunkflow$lease() {
+        RegionFileLease lease = this.chunkflow$lease;
+        if (lease == null) {
+            synchronized (this) {
+                lease = this.chunkflow$lease;
+                if (lease == null) {
+                    lease = new RegionFileLease();
+                    this.chunkflow$lease = lease;
+                }
+            }
+        }
+        return lease;
+    }
+
+    @Unique
+    private FileChannel chunkflow$channel() {
+        FileChannel channel = this.chunkflow$channel;
+        if (channel == null && this.dataFile != null) {
+            channel = this.dataFile.getChannel();
+            this.chunkflow$channel = channel;
+        }
+        return channel;
+    }
+
+    @Unique
+    private StampedLock chunkflow$lock() {
+        StampedLock lock = this.chunkflow$lock;
+        if (lock == null) {
+            synchronized (this) {
+                lock = this.chunkflow$lock;
+                if (lock == null) {
+                    lock = new StampedLock();
+                    this.chunkflow$lock = lock;
+                }
+            }
+        }
+        return lock;
+    }
+
     @Override
     public boolean chunkflow$isClosed() {
-        return this.chunkflow$lease.isClosed() || this.dataFile == null;
+        return this.chunkflow$lease().isClosed() || this.dataFile == null;
     }
 
     @Override
     public void chunkflow$setClosed(boolean closed) {
         if (closed) {
-            this.chunkflow$lease.forceClose();
+            this.chunkflow$lease().forceClose();
         }
     }
 
@@ -118,17 +163,17 @@ public abstract class RegionFileMixin implements IRegionFile {
 
     @Override
     public boolean chunkflow$tryCloseLease() {
-        return this.chunkflow$lease.tryClose();
+        return this.chunkflow$lease().tryClose();
     }
 
     @Override
     public void chunkflow$forceCloseLease() {
-        this.chunkflow$lease.forceClose();
+        this.chunkflow$lease().forceClose();
     }
 
     @Override
     public int chunkflow$readers() {
-        return this.chunkflow$lease.readers();
+        return this.chunkflow$lease().readers();
     }
 
     /**
@@ -142,24 +187,24 @@ public abstract class RegionFileMixin implements IRegionFile {
         if (this.outOfBounds(x, z)) {
             return null;
         }
-        if (!this.chunkflow$lease.tryAcquire()) {
+        if (!this.chunkflow$lease().tryAcquire()) {
             return this.chunkflow$reopenAndRead(x, z);
         }
         try {
             return this.chunkflow$readOnce(x, z);
         } finally {
-            this.chunkflow$lease.release();
+            this.chunkflow$lease().release();
         }
     }
 
     @Unique
     private DataInputStream chunkflow$readOnce(int x, int z) {
-        FileChannel channel = this.chunkflow$channel;
+        FileChannel channel = this.chunkflow$channel();
         if (channel == null || !channel.isOpen()) {
             return null;
         }
 
-        long stamp = this.chunkflow$lock.tryOptimisticRead();
+        long stamp = this.chunkflow$lock().tryOptimisticRead();
         int offset = this.getOffset(x, z);
         if (offset == 0) {
             return null;
@@ -174,9 +219,9 @@ public abstract class RegionFileMixin implements IRegionFile {
             failure = t;
         }
 
-        if (!this.chunkflow$lock.validate(stamp)) {
+        if (!this.chunkflow$lock().validate(stamp)) {
             // A write landed while we were reading; redo under the shared stamp.
-            long readStamp = this.chunkflow$lock.readLock();
+            long readStamp = this.chunkflow$lock().readLock();
             try {
                 offset = this.getOffset(x, z);
                 if (offset == 0) {
@@ -186,7 +231,7 @@ public abstract class RegionFileMixin implements IRegionFile {
             } catch (IOException e) {
                 return null;
             } finally {
-                this.chunkflow$lock.unlockRead(readStamp);
+                this.chunkflow$lock().unlockRead(readStamp);
             }
         }
 
@@ -241,11 +286,11 @@ public abstract class RegionFileMixin implements IRegionFile {
      */
     @Overwrite
     protected void write(int x, int z, byte[] data, int length) {
-        long stamp = this.chunkflow$lock.writeLock();
+        long stamp = this.chunkflow$lock().writeLock();
         try {
             this.chunkflow$writeLocked(x, z, data, length);
         } finally {
-            this.chunkflow$lock.unlockWrite(stamp);
+            this.chunkflow$lock().unlockWrite(stamp);
         }
     }
 
@@ -312,7 +357,7 @@ public abstract class RegionFileMixin implements IRegionFile {
                     j = this.sectorFree.size();
 
                     for (int i2 = 0; i2 < l; ++i2) {
-                        this.dataFile.write(EMPTY);
+                        this.dataFile.write(chunkflow$empty());
                         this.sectorFree.add(Boolean.FALSE);
                     }
 
@@ -328,9 +373,19 @@ public abstract class RegionFileMixin implements IRegionFile {
         }
     }
 
-    /** 4 KB of zeroes; vanilla's EMPTY_SECTOR is private, so keep our own. */
+    /** 4 KB of zeroes; vanilla's EMPTY_SECTOR is private, so keep our own (lazy). */
     @Unique
-    private static final byte[] EMPTY = new byte[4096];
+    private static byte[] EMPTY;
+
+    @Unique
+    private static byte[] chunkflow$empty() {
+        byte[] empty = EMPTY;
+        if (empty == null) {
+            empty = new byte[4096];
+            EMPTY = empty;
+        }
+        return empty;
+    }
 
     /**
      * @author ChunkFlow
@@ -338,9 +393,9 @@ public abstract class RegionFileMixin implements IRegionFile {
      */
     @Overwrite
     public void close() throws IOException {
-        this.chunkflow$lease.forceClose();
+        this.chunkflow$lease().forceClose();
         long deadline = System.currentTimeMillis() + 250L;
-        while (this.chunkflow$lease.readers() > 0 && System.currentTimeMillis() < deadline) {
+        while (this.chunkflow$lease().readers() > 0 && System.currentTimeMillis() < deadline) {
             try {
                 Thread.sleep(1L);
             } catch (InterruptedException e) {
@@ -348,7 +403,7 @@ public abstract class RegionFileMixin implements IRegionFile {
                 break;
             }
         }
-        long stamp = this.chunkflow$lock.writeLock();
+        long stamp = this.chunkflow$lock().writeLock();
         try {
             this.chunkflow$channel = null;
             if (this.dataFile != null) {
@@ -359,7 +414,7 @@ public abstract class RegionFileMixin implements IRegionFile {
                 }
             }
         } finally {
-            this.chunkflow$lock.unlockWrite(stamp);
+            this.chunkflow$lock().unlockWrite(stamp);
         }
     }
 }
