@@ -1,21 +1,13 @@
-<!-- Rich HTML Companion Banner -->
 <div align="center">
-  <table style="width: 100%; max-width: 880px; border: 2px solid #10b981; border-radius: 12px; background: #064e3b; color: #f8fafc; padding: 14px 20px; margin: 16px auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);">
+  <table style="display: inline-table; border: 1px solid #10b981; border-radius: 8px; background-color: rgba(16, 185, 129, 0.08); padding: 8px 16px; margin: 12px auto;">
     <tr>
-      <td width="70" align="center" valign="middle">
-        <a href="https://github.com/CleanroomMC/WorldFlow">
-          <img src="https://raw.githubusercontent.com/CleanroomMC/WorldFlow/main/logo.png" width="60" height="60" alt="WorldFlow Logo" style="border-radius: 8px; vertical-align: middle;" />
+      <td style="vertical-align: middle; padding-right: 12px;">
+        <a href="https://github.com/Brilliafy/WorldFlow">
+          <img src="https://raw.githubusercontent.com/Brilliafy/WorldFlow/main/logo.png" width="36" height="36" alt="WorldFlow Logo" style="border-radius: 6px; vertical-align: middle;" />
         </a>
       </td>
-      <td style="padding-left: 18px; text-align: left; vertical-align: middle;">
-        <div style="font-size: 1.15em; font-weight: 800; color: #34d399; letter-spacing: 0.5px; margin-bottom: 4px;">
-          🌍 PAIR WITH WORLDFLOW FOR COMPLETE WORLDGEN OPTIMIZATION!
-        </div>
-        <div style="font-size: 0.95em; line-height: 1.5; color: #e2e8f0;">
-          <b>ChunkFlow</b> optimizes <b>reading and streaming existing chunks</b> from disk with lock-free positional I/O.<br />
-          For <b>multi-threaded world generation of brand new terrain</b>, vectorized noise engine, and cascading cross-chunk freeze prevention (OTG/Dregora/vanilla), pair this with our companion mod:
-          <a href="https://github.com/CleanroomMC/WorldFlow" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 WorldFlow</a>!
-        </div>
+      <td style="vertical-align: middle; text-align: left; font-size: 14px;">
+        🌍 <b>Looking for faster world generation?</b> Pair with <a href="https://github.com/Brilliafy/WorldFlow"><b>WorldFlow</b></a> for multi-threaded terrain generation & cascade freeze prevention!
       </td>
     </tr>
   </table>
@@ -61,7 +53,7 @@ That happens because Minecraft 1.12.2 still relies on single-threaded I/O archit
 
 ## 📊 Performance & Benchmarks
 
-Measured using the ChunkFlow multi-threaded stress harness ([`RegionTorture`](https://github.com/CleanroomMC/ChunkFlow)):
+Measured using the ChunkFlow multi-threaded stress harness ([`RegionTorture`](https://github.com/Brilliafy/ChunkFlow)):
 
 | Benchmark Metric | Vanilla / Standard Forge | ChunkFlow 1.0.1 | Improvement |
 |---|---|---|---|
@@ -141,6 +133,6 @@ Config file: `config/chunkflow.cfg`
 
 ## 🔗 Links & Community
 
-* **Source Code & Issue Tracker**: [GitHub](https://github.com/CleanroomMC/ChunkFlow)
+* **Source Code & Issue Tracker**: [GitHub](https://github.com/Brilliafy/ChunkFlow)
 * **CleanroomMC Community**: [Cleanroom Discord](https://discord.gg/cleanroommc)
-* **Bug Reports**: Please include your `logs/debug.log` and system specifications on our GitHub issue tracker.
+* **Companion Mod**: [WorldFlow](https://github.com/Brilliafy/WorldFlow)

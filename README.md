@@ -1,38 +1,32 @@
 <div align="center">
 
-<!-- Rich HTML Companion Banner -->
-<table style="width: 100%; max-width: 880px; border: 2px solid #10b981; border-radius: 12px; background: #064e3b; color: #f8fafc; padding: 14px 20px; margin: 16px auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);">
+<table style="display: inline-table; border: 1px solid #10b981; border-radius: 8px; background-color: rgba(16, 185, 129, 0.08); padding: 8px 16px; margin: 12px auto;">
   <tr>
-    <td width="70" align="center" valign="middle">
-      <a href="https://github.com/CleanroomMC/WorldFlow">
-        <img src="https://raw.githubusercontent.com/CleanroomMC/WorldFlow/main/logo.png" width="60" height="60" alt="WorldFlow Logo" style="border-radius: 8px; vertical-align: middle;" />
+    <td style="vertical-align: middle; padding-right: 12px;">
+      <a href="https://github.com/Brilliafy/WorldFlow">
+        <img src="https://raw.githubusercontent.com/Brilliafy/WorldFlow/main/logo.png" width="36" height="36" alt="WorldFlow Logo" style="border-radius: 6px; vertical-align: middle;" />
       </a>
     </td>
-    <td style="padding-left: 18px; text-align: left; vertical-align: middle;">
-      <div style="font-size: 1.15em; font-weight: 800; color: #34d399; letter-spacing: 0.5px; margin-bottom: 4px;">
-        🌍 PAIR WITH WORLDFLOW FOR COMPLETE WORLDGEN OPTIMIZATION!
-      </div>
-      <div style="font-size: 0.95em; line-height: 1.5; color: #e2e8f0;">
-        <b>ChunkFlow</b> optimizes <b>reading and streaming existing chunks</b> from disk with lock-free positional I/O.<br />
-        For <b>multi-threaded world generation of brand new terrain</b>, vectorized noise engine, and cascading cross-chunk freeze prevention (OTG/Dregora/vanilla), pair this with our companion mod:
-        <a href="https://github.com/CleanroomMC/WorldFlow" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 WorldFlow</a>!
-      </div>
+    <td style="vertical-align: middle; text-align: left; font-size: 14px;">
+      🌍 <b>Looking for faster world generation?</b> Pair with <a href="https://github.com/Brilliafy/WorldFlow"><b>WorldFlow</b></a> for multi-threaded terrain generation & cascade freeze prevention!
     </td>
   </tr>
 </table>
 
-<img src="logo.png" alt="ChunkFlow Logo" width="160" height="160" />
+<br />
+
+<img src="logo.png" alt="ChunkFlow Logo" width="130" height="130" />
 
 # ChunkFlow
 
 **Next-Generation Chunk Loading, Lock-Free Region I/O & Directional Streaming for Minecraft 1.12.2**
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.12.2-blue.svg?style=for-the-badge&logo=minecraft)](https://minecraft.net/)
-[![Platform](https://img.shields.io/badge/Platform-Cleanroom%20%7C%20Forge-orange.svg?style=for-the-badge)](https://github.com/CleanroomMC)
-[![Version](https://img.shields.io/badge/Release-v1.0.1-brightgreen.svg?style=for-the-badge)](https://github.com/CleanroomMC/ChunkFlow/releases)
-[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=for-the-badge)](LICENSE)
-[![MixinBooter](https://img.shields.io/badge/Requires-MixinBooter%2010.2+-purple.svg?style=for-the-badge)](https://www.curseforge.com/minecraft/mc-mods/mixinbooter)
-[![Speedup](https://img.shields.io/badge/I%2FO%20Throughput-Up%20to%205.9x-gold.svg?style=for-the-badge)](#-benchmarks--torture-testing)
+[![Minecraft](https://img.shields.io/badge/Minecraft-1.12.2-blue.svg?style=flat-square&logo=minecraft)](https://minecraft.net/)
+[![Platform](https://img.shields.io/badge/Platform-Cleanroom%20%7C%20Forge-orange.svg?style=flat-square)](https://github.com/CleanroomMC)
+[![Version](https://img.shields.io/badge/Release-v1.0.1-brightgreen.svg?style=flat-square)](https://github.com/Brilliafy/ChunkFlow/releases)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
+[![MixinBooter](https://img.shields.io/badge/Requires-MixinBooter%2010.2+-purple.svg?style=flat-square)](https://www.curseforge.com/minecraft/mc-mods/mixinbooter)
+[![Speedup](https://img.shields.io/badge/I%2FO%20Speedup-Up%20to%205.9x-gold.svg?style=flat-square)](#-benchmarks--torture-testing)
 
 <p align="center">
   <a href="#-why-chunkflow">Why ChunkFlow?</a> •
@@ -42,18 +36,10 @@
   <a href="#-installation">Installation</a> •
   <a href="#-commands">Commands</a> •
   <a href="#-configuration">Configuration</a> •
-  <a href="#-compatibility">Compatibility</a> •
-  <a href="#-building-from-source">Building</a>
+  <a href="#-compatibility">Compatibility</a>
 </p>
 
 </div>
-
----
-
-> [!TIP]
-> **Recommended Companion Mod**: Pair ChunkFlow with [**WorldFlow**](https://github.com/CleanroomMC/WorldFlow)!
-> - **ChunkFlow**: Accelerates **disk loading of existing chunks** (2.9x - 5.9x faster) with lock-free positional region I/O and directional Elytra streaming.
-> - **WorldFlow**: Accelerates **new chunk generation**, vectorizes terrain noise, and halts cascading cross-chunk worldgen freezes.
 
 ---
 
@@ -264,7 +250,7 @@ File location: `config/chunkflow.cfg`
 | **SpongeForge** | ✅ Compatible | Safe task draining guarantees compatibility with Sponge's world lifecycle. |
 | **FoamFix / VanillaFix** | ✅ Compatible | No overlapping bytecode transformations. |
 | **OptiFine** | ✅ Compatible | Client-side visual rendering is completely unaffected. |
-| **WorldFlow** | ✅ Paired Companion | ChunkFlow manages disk I/O & network streaming; WorldFlow handles multi-threaded worldgen. |
+| **[WorldFlow](https://github.com/Brilliafy/WorldFlow)** | ✅ Paired Companion | ChunkFlow manages disk I/O & network streaming; WorldFlow handles multi-threaded worldgen. |
 
 ---
 
@@ -277,7 +263,7 @@ File location: `config/chunkflow.cfg`
 ### Build Instructions
 ```bash
 # Clone the repository
-git clone https://github.com/CleanroomMC/ChunkFlow.git
+git clone https://github.com/Brilliafy/ChunkFlow.git
 cd ChunkFlow
 
 # Build the mod jar using Gradle
@@ -307,7 +293,7 @@ java -cp build/classes/java/main:/tmp/cftest com.cleanroommc.chunkflow.torture.R
 Contributions, bug reports, and pull requests are welcome!
 - Please read our [**Contributing Guidelines**](CONTRIBUTING.md) before opening a pull request.
 - Ensure that any changes to I/O logic pass the [**RegionTorture**](tools/RegionTorture.java) stress test without warnings.
-- Report issues and suggest features on the [**GitHub Issue Tracker**](https://github.com/CleanroomMC/ChunkFlow/issues).
+- Report issues and suggest features on the [**GitHub Issue Tracker**](https://github.com/Brilliafy/ChunkFlow/issues).
 
 ---
 
