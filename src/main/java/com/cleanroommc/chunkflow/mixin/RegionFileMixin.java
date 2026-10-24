@@ -42,7 +42,18 @@ import java.util.concurrent.locks.StampedLock;
 @Mixin(RegionFile.class)
 public abstract class RegionFileMixin implements IRegionFile {
 
-    private static final ThreadLocal<Integer> SELF_HEAL_DEPTH = ThreadLocal.withInitial(() -> 0);
+    @Unique
+    private static ThreadLocal<Integer> SELF_HEAL_DEPTH;
+
+    @Unique
+    private static ThreadLocal<Integer> chunkflow$selfHealDepth() {
+        ThreadLocal<Integer> depth = SELF_HEAL_DEPTH;
+        if (depth == null) {
+            depth = ThreadLocal.withInitial(() -> 0);
+            SELF_HEAL_DEPTH = depth;
+        }
+        return depth;
+    }
 
     @Shadow
     private RandomAccessFile dataFile;
@@ -257,11 +268,11 @@ public abstract class RegionFileMixin implements IRegionFile {
     @Unique
     @Nullable
     private DataInputStream chunkflow$reopenAndRead(int x, int z) {
-        int depth = SELF_HEAL_DEPTH.get();
+        int depth = RegionFileMixin.chunkflow$selfHealDepth().get();
         if (depth >= 2 || this.fileName == null || this.fileName.getParentFile() == null) {
             return null;
         }
-        SELF_HEAL_DEPTH.set(depth + 1);
+        RegionFileMixin.chunkflow$selfHealDepth().set(depth + 1);
         try {
             File worldDir = this.fileName.getParentFile().getParentFile();
             if (worldDir == null) {
@@ -275,7 +286,7 @@ public abstract class RegionFileMixin implements IRegionFile {
         } catch (Throwable t) {
             return null;
         } finally {
-            SELF_HEAL_DEPTH.set(depth);
+            RegionFileMixin.chunkflow$selfHealDepth().set(depth);
         }
     }
 
