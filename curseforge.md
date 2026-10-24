@@ -7,7 +7,7 @@
         </a>
       </td>
       <td style="vertical-align: middle; text-align: left; font-size: 14px;">
-        🌍 <b>Looking for faster world generation?</b> Pair with <a href="https://github.com/Brilliafy/WorldFlow"><b>WorldFlow</b></a> for multi-threaded terrain generation & cascade freeze prevention!
+        🌍 <b>Pair with <a href="https://github.com/Brilliafy/WorldFlow">WorldFlow</a></b> to generate new terrain faster across all CPU cores and stop worldgen freezes!
       </td>
     </tr>
   </table>
