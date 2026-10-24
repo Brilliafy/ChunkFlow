@@ -1,5 +1,26 @@
 <div align="center">
 
+<!-- Rich HTML Companion Banner -->
+<table style="width: 100%; max-width: 880px; border: 2px solid #10b981; border-radius: 12px; background: #064e3b; color: #f8fafc; padding: 14px 20px; margin: 16px auto; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);">
+  <tr>
+    <td width="70" align="center" valign="middle">
+      <a href="https://github.com/CleanroomMC/WorldFlow">
+        <img src="https://raw.githubusercontent.com/CleanroomMC/WorldFlow/main/logo.png" width="60" height="60" alt="WorldFlow Logo" style="border-radius: 8px; vertical-align: middle;" />
+      </a>
+    </td>
+    <td style="padding-left: 18px; text-align: left; vertical-align: middle;">
+      <div style="font-size: 1.15em; font-weight: 800; color: #34d399; letter-spacing: 0.5px; margin-bottom: 4px;">
+        🌍 PAIR WITH WORLDFLOW FOR COMPLETE WORLDGEN OPTIMIZATION!
+      </div>
+      <div style="font-size: 0.95em; line-height: 1.5; color: #e2e8f0;">
+        <b>ChunkFlow</b> optimizes <b>reading and streaming existing chunks</b> from disk with lock-free positional I/O.<br />
+        For <b>multi-threaded world generation of brand new terrain</b>, vectorized noise engine, and cascading cross-chunk freeze prevention (OTG/Dregora/vanilla), pair this with our companion mod:
+        <a href="https://github.com/CleanroomMC/WorldFlow" style="color: #6ee7b7; font-weight: bold; text-decoration: underline;">👉 WorldFlow</a>!
+      </div>
+    </td>
+  </tr>
+</table>
+
 <img src="logo.png" alt="ChunkFlow Logo" width="160" height="160" />
 
 # ChunkFlow
@@ -26,6 +47,13 @@
 </p>
 
 </div>
+
+---
+
+> [!TIP]
+> **Recommended Companion Mod**: Pair ChunkFlow with [**WorldFlow**](https://github.com/CleanroomMC/WorldFlow)!
+> - **ChunkFlow**: Accelerates **disk loading of existing chunks** (2.9x - 5.9x faster) with lock-free positional region I/O and directional Elytra streaming.
+> - **WorldFlow**: Accelerates **new chunk generation**, vectorizes terrain noise, and halts cascading cross-chunk worldgen freezes.
 
 ---
 
