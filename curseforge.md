@@ -135,4 +135,4 @@ Config file: `config/chunkflow.cfg`
 
 * **Source Code & Issue Tracker**: [GitHub](https://github.com/Brilliafy/ChunkFlow)
 * **CleanroomMC Community**: [Cleanroom Discord](https://discord.gg/cleanroommc)
-* **Companion Mod**: [WorldFlow](https://github.com/Brilliafy/WorldFlow)
+* **Companion Mods**: [WorldFlow](https://github.com/Brilliafy/WorldFlow) (Terrain Generation) • [OTG-Flow](https://github.com/Brilliafy/OTG-Flow) (Concurrent OTG World Engine)

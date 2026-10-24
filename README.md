@@ -251,6 +251,7 @@ File location: `config/chunkflow.cfg`
 | **FoamFix / VanillaFix** | ✅ Compatible | No overlapping bytecode transformations. |
 | **OptiFine** | ✅ Compatible | Client-side visual rendering is completely unaffected. |
 | **[WorldFlow](https://github.com/Brilliafy/WorldFlow)** | ✅ Paired Companion | ChunkFlow manages disk I/O & network streaming; WorldFlow handles multi-threaded worldgen. |
+| **[OTG-Flow](https://github.com/Brilliafy/OTG-Flow)** | ✅ Full Integration | High-performance concurrent OpenTerrainGenerator engine paired with WorldFlow & ChunkFlow. |
 
 ---
 
