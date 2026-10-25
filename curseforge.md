@@ -33,7 +33,7 @@ That happens because Minecraft 1.12.2 still relies on single-threaded I/O archit
 
 1. **The 1-Thread Async Bottleneck**: Forge provides an asynchronous chunk loader (`ChunkIOExecutor`), but hardcodes its core pool size to **1 thread** with an unbounded queue. This means whether your server has 4 cores or 64 cores, every chunk read from disk is bottlenecked behind a single worker thread!
 2. **Region File Serialization**: Vanilla uses a shared file cursor on region (`.mca`) files and locks the entire file with `synchronized(this)`. When multiple players or workers need chunks from the same region, their reads are forced into a single-file line.
-3. **Catastrophic Cache Wipes**: When vanilla's region file cache reaches 256 open files, it doesn't evict the oldest file—it purges and closes **all 256 files at once**, causing brutal disk spikes and server lag.
+3. **Catastrophic Cache Wipes**: When vanilla's region file cache reaches 256 open files, it doesn't evict the oldest file it purges and closes **all 256 files at once**, causing brutal disk spikes and server lag.
 4. **The Elytra "Void Flight" Syndrome**: The vanilla server calculates chunk send priority using radial circles around player coordinates. When flying fast, the server wastes time and bandwidth sending chunks *behind* you rather than the ones directly ahead of you.
 5. **Garbage Churn**: Vanilla allocates a new `java.util.zip.Inflater` decompressor for every chunk read from disk, creating memory pressure and GC micro-stutters.
 
@@ -45,7 +45,7 @@ That happens because Minecraft 1.12.2 still relies on single-threaded I/O archit
 * 🧵 **Multi-Core Asynchronous Loading**: Automatically expands Forge's `ChunkIOExecutor` across your available CPU cores (`cores - 1`, auto-default capped at 4 for spindle drives, or manually configured up to 64).
 * 🎯 **Velocity-Projected Directional Chunk Sending**: Calculates player heading and speed (walking, riding, Elytra flying, or modded jetpacks) and prioritizes chunk network sending in a forward cone. No more flying into the void!
 * 🔄 **Pooled Thread-Local Zlib Decompression**: Reuses thread-local `Inflater` instances with exact buffer allocation, eliminating decompressor allocation garbage and GC stalls.
-* 🛡️ **Atomic Reader Leases & Self-Healing Reads**: Atomic CAS reader leases (`RegionFileLease`) prevent the cache trimmer from evicting a file mid-read. If an eviction race ever occurs, ChunkFlow transparently re-opens the live file—guaranteeing **zero false nulls** and **zero lost chunks**.
+* 🛡️ **Atomic Reader Leases & Self-Healing Reads**: Atomic CAS reader leases (`RegionFileLease`) prevent the cache trimmer from evicting a file mid-read. If an eviction race ever occurs, ChunkFlow transparently re-opens the live file guaranteeing **zero false nulls** and **zero lost chunks**.
 * 🧹 **Intelligent Cache Trimming**: Expands the region file cache to 512 (configurable up to 4,096) and performs clean, idle-only LRU trimming instead of vanilla's devastating full-cache wipes.
 * 🔒 **StampedLock Concurrency**: Non-blocking optimistic offset table reads. Writers hold exclusive write stamps during sector reallocation, verified with 0 torn reads under extreme torture testing.
 
@@ -87,16 +87,16 @@ Measured using the ChunkFlow multi-threaded stress harness ([`RegionTorture`](ht
 
 Requires OP / Permission Level 2:
 
-* `/chunkflow stats` — Live report of worker threads, pool capacity, off-thread chunks loaded, cached regions, and zlib reuse counters.
-* `/chunkflow threads <0|n>` — Dynamically change the worker thread count at runtime (`0` = automatic `cores - 1`).
-* `/chunkflow toggle` — Toggles async chunk I/O parallelism on or off without restarting.
-* `/chunkflow region stats` — Displays region read throughput, decompressed chunk counters, and zlib cache metrics.
-* `/chunkflow region toggle` — Toggles the fast lock-free region I/O path.
-* `/chunkflow region clear` — Resets cumulative region read statistics.
-* `/chunkflow directional stats` — Shows directional chunk sending metrics, biased calls, and boosted chunk counts.
-* `/chunkflow directional toggle` — Toggles velocity-projected directional chunk ordering.
-* `/chunkflow directional clear` — Resets directional metrics.
-* `/chunkflow reload` — Hot-reloads settings from `config/chunkflow.cfg`.
+* `/chunkflow stats`   Live report of worker threads, pool capacity, off-thread chunks loaded, cached regions, and zlib reuse counters.
+* `/chunkflow threads <0|n>`   Dynamically change the worker thread count at runtime (`0` = automatic `cores - 1`).
+* `/chunkflow toggle`   Toggles async chunk I/O parallelism on or off without restarting.
+* `/chunkflow region stats`   Displays region read throughput, decompressed chunk counters, and zlib cache metrics.
+* `/chunkflow region toggle`   Toggles the fast lock-free region I/O path.
+* `/chunkflow region clear`   Resets cumulative region read statistics.
+* `/chunkflow directional stats`   Shows directional chunk sending metrics, biased calls, and boosted chunk counts.
+* `/chunkflow directional toggle`   Toggles velocity-projected directional chunk ordering.
+* `/chunkflow directional clear`   Resets directional metrics.
+* `/chunkflow reload`   Hot-reloads settings from `config/chunkflow.cfg`.
 
 *(Aliases: `/chunkpipe`, `/cpipeline`)*
 
