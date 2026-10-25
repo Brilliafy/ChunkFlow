@@ -301,7 +301,6 @@ Contributions, bug reports, and pull requests are welcome!
 ## 📜 License & Credits
 
 - **Author**: Brilliafy
-- **Organization**: [CleanroomMC](https://github.com/CleanroomMC)
 - **License**: [GNU General Public License v3.0 (GPL-3.0)](LICENSE)
 
 *Minecraft is a registered trademark of Mojang Synergies AB. ChunkFlow is an open-source optimization project not affiliated with Mojang or Microsoft.*

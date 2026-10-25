@@ -16,7 +16,7 @@ ChunkFlow is built for **Minecraft 1.12.2** on **Cleanroom** and **Minecraft For
 ### Initializing the Workspace
 ```bash
 # Clone the repository
-git clone https://github.com/CleanroomMC/ChunkFlow.git
+git clone https://github.com/Brilliafy/ChunkFlow.git
 cd ChunkFlow
 
 # Build the mod
@@ -99,7 +99,7 @@ The test must complete with `ALL TORTURE TESTS PASSED` and **0 torn reads** unde
 ## 🐞 Reporting Issues
 
 If you encounter a bug or crash:
-1. Search the [GitHub Issue Tracker](https://github.com/CleanroomMC/ChunkFlow/issues) to verify the issue has not already been reported.
+1. Search the [GitHub Issue Tracker](https://github.com/Brilliafy/ChunkFlow/issues) to verify the issue has not already been reported.
 2. Provide a clear and concise description of the issue.
 3. Attach full logs from `logs/latest.log` or `logs/debug.log` (use a paste service like Pastebin or GitHub Gist).
 4. Include your exact mod loader (Forge version or Cleanroom version), MixinBooter version, and operating system.
