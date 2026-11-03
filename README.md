@@ -1,3 +1,9 @@
+> [!WARNING]
+> ### PROJECT UNMAINTAINED / ON INDEFINITE HIATUS
+> **This project is no longer actively maintained and is on indefinite hiatus.**
+> No further updates, feature additions, or bug fixes will be provided. The repository is archived and read-only. Anyone is welcome to fork this project and continue development under the terms of the open-source license.
+
+
 <div align="center">
 
 <table style="display: inline-table; border: 1px solid #10b981; border-radius: 8px; background-color: rgba(16, 185, 129, 0.08); padding: 8px 16px; margin: 12px auto;">
